@@ -48,6 +48,16 @@ end
 -- ---------- panel construction ----------
 
 local panel -- the frame we register
+local settingsCategory
+
+local function registerPanel(optionsPanel)
+  if Settings and Settings.RegisterCanvasLayoutCategory and Settings.RegisterAddOnCategory then
+    settingsCategory = Settings.RegisterCanvasLayoutCategory(optionsPanel, ADDON_NAME)
+    Settings.RegisterAddOnCategory(settingsCategory)
+  elseif InterfaceOptions_AddCategory then
+    InterfaceOptions_AddCategory(optionsPanel)
+  end
+end
 
 local function makeCheckbox(parent, label, x, y, getter, setter)
   local cb = CreateFrame("CheckButton", nil, parent, "InterfaceOptionsCheckButtonTemplate")
@@ -199,7 +209,7 @@ local function buildPanel()
   panel.default = function() resetBtn:GetScript("OnClick")(resetBtn) end
   panel.refresh = function() end
 
-  InterfaceOptions_AddCategory(panel)
+  registerPanel(panel)
   return panel
 end
 
@@ -207,8 +217,12 @@ end
 -- the classic "first-open focuses parent" bug.
 function BlasterMaster_OpenOptions()
   buildPanel()
-  InterfaceOptionsFrame_OpenToCategory(panel)
-  InterfaceOptionsFrame_OpenToCategory(panel)
+  if settingsCategory and Settings and Settings.OpenToCategory then
+    Settings.OpenToCategory(settingsCategory:GetID())
+  elseif InterfaceOptionsFrame_OpenToCategory then
+    InterfaceOptionsFrame_OpenToCategory(panel)
+    InterfaceOptionsFrame_OpenToCategory(panel)
+  end
 end
 
 -- Build panel on PLAYER_LOGIN so all globals are available.
