@@ -7,3 +7,4 @@
 ## SavedVariables: BlasterMasterDB
 
 BlasterMaster.lua
+Options.lua
