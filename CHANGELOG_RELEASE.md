@@ -1,7 +1,7 @@
-﻿# v0.3.0
+﻿# v0.4.0
 
-Changes since v0.2.0.
+Changes since v0.3.0.
 
 ## Features
-- generic player crit audio + SCT planning (#4) (#8) (f26f7ce)
+- in-game options panel with per-alert sound picker (#6) (#9) (d01296a)
 
