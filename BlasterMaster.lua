@@ -46,7 +46,11 @@ local SFX = {
 
 local function playSFX(key)
   if BlasterMasterDB and BlasterMasterDB.muted then return end
-  local path = SFX[key]
+  local path
+  if _G.BlasterMaster_GetSfxPath then
+    path = BlasterMaster_GetSfxPath(key)
+  end
+  if not path then path = SFX[key] end
   if path then PlaySoundFile(path, "Master") end
 end
 
@@ -326,6 +330,12 @@ SlashCmdList["BLASTERMASTER"] = function(msg)
     BlasterMasterDB.point = defaults.point
     ApplyPoint()
     print("|cff1e5ab4[BlasterMaster]|r HUD position reset.")
+  elseif cmd == "options" or cmd == "config" then
+    if _G.BlasterMaster_OpenOptions then
+      BlasterMaster_OpenOptions()
+    else
+      print("|cff1e5ab4[BlasterMaster]|r options panel unavailable.")
+    end
   elseif cmd == "crit" then
     BlasterMasterDB.critAudioEnabled = not BlasterMasterDB.critAudioEnabled
     print("|cff1e5ab4[BlasterMaster]|r crit audio " .. (BlasterMasterDB.critAudioEnabled and "ON" or "OFF"))
@@ -338,6 +348,6 @@ SlashCmdList["BLASTERMASTER"] = function(msg)
       print("|cff1e5ab4[BlasterMaster]|r usage: /blaster hp <0..1>  (e.g. 0.3)")
     end
   else
-    print("|cff1e5ab4[BlasterMaster]|r commands: /blaster toggle | mute | crit | reset | hp <0..1>")
+    print("|cff1e5ab4[BlasterMaster]|r commands: /blaster toggle | mute | crit | reset | hp <0..1> | options")
   end
 end
