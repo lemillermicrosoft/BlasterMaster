@@ -32,10 +32,12 @@ local POWER_COLORS = {
 }
 
 local SFX = {
-  laser   = "Sound\\Spells\\SimonGame_Visual_GameStart.ogg",
-  siren   = "Sound\\Interface\\RaidWarning.ogg",
-  oneUp   = "Sound\\Interface\\LevelUp.ogg",
-  fanfare = "Sound\\Interface\\LevelUp.ogg",
+  -- Mapped to user-provided Blaster Master SFX pack (Media/Audio/).
+  -- Size-based guesses; remap via a follow-up PR once we know which sound is which.
+  laser     = "Interface\\AddOns\\BlasterMaster\\Media\\Audio\\Blaster Master SFX (1).wav",
+  siren     = "Interface\\AddOns\\BlasterMaster\\Media\\Audio\\Blaster Master SFX (14).wav",
+  oneUp     = "Interface\\AddOns\\BlasterMaster\\Media\\Audio\\Blaster Master SFX (29).wav",
+  fanfare   = "Interface\\AddOns\\BlasterMaster\\Media\\Audio\\Blaster Master SFX (33).wav",
 }
 
 local function playSFX(key)
