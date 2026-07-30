@@ -36,6 +36,58 @@ An 8-bit love letter to Blaster Master (NES, 1988), reimagined as a WoW combat H
 - Drop below 25% HP → siren fires once, not on every heartbeat tick.
 - `/reload` preserves position + mute state.
 
+## Crit audio (planned — separate PR)
+
+**Why:** deehoc plays warlock and wants a punchy, distinct cue when Shadow Bolt (etc.) crits. Default WoW crit feedback is easy to miss in raid noise.
+
+**Scope:**
+
+- CLEU listener on `SPELL_DAMAGE` / `SPELL_PERIODIC_DAMAGE`, source = player, `critical == true`.
+- Distinct cue for Shadow Bolt (warlock flagship, all TBC ranks by spellId), generic cue for every other crit.
+- Throttle: at most one CRIT sound per 0.4s so AoE / multi-dot doesn't machinegun.
+- Toggleable via `/blaster crit`, persisted in SavedVariables (`critAudioEnabled`, default true). Respects global `muted`.
+- Post-MVP: pet crits (imp / felguard / etc.), per-spell config UI, custom chiptune samples.
+
+## Custom Scrolling Combat Text (SCT) — planned
+
+**Why:** Default WoW SCT anchors to the mob nameplate and gets buried underneath it in busy fights. deehoc wants readable, customizable damage/heal numbers that stay out of the nameplate's way.
+
+**MVP scope (for a future PR):**
+
+- Replace (or supplement) Blizzard's floating combat text for outgoing damage/healing from the player.
+- Anchor mode options (persisted in SavedVariables):
+  - `above-nameplate` — pin above target nameplate with configurable Y offset (default +40px).
+  - `screen-anchor` — free-floating frame anchored to a screen point, numbers scroll upward from it (default: right of the HUD).
+  - `arc` — scatter numbers in a fan from the target (post-MVP).
+- Number styling:
+  - Font size scales with damage relative to player's average hit (bigger = harder-hitting).
+  - Crit numbers: larger, yellow, exclamation-styled ("1234!").
+  - Miss/dodge/parry/immune: small red text, distinct.
+  - Heal numbers: green, prefixed `+`.
+- Icon support: leading spell icon (small, left of the number) for `SPELL_DAMAGE` / `SPELL_HEAL`.
+- Throttle / merge: coalesce multi-hit ticks of the same spell within 100ms into one number (post-MVP toggle).
+- Slash: `/blaster sct anchor <above-nameplate|screen>`, `/blaster sct scale <n>`, `/blaster sct off/on`.
+
+**Anti-overlap logic:**
+
+- `above-nameplate` mode uses `C_NamePlate.GetNamePlateForUnit(unit)` to attach to the actual nameplate frame, then adds a configurable Y offset so numbers float above rather than under the health bar/name text.
+- Fallback when nameplate not visible: switch to `screen-anchor` for that event.
+
+**Tech notes:**
+
+- Events: `COMBAT_LOG_EVENT_UNFILTERED` (source = player) + `UNIT_SPELLCAST_SUCCEEDED` for cast confirmation.
+- Each number = a lightweight `FontString` from a small pool (reuse to avoid GC churn).
+- Animation via `OnUpdate` — float up + fade out over ~1.2s. Use `AnimationGroup` if smoother.
+- No dependency on Blizzard's FCT; user can disable Blizzard's SCT separately or run both.
+- Interface number check: `C_NamePlate` exists in TBC Classic 2.5.6 — verify before shipping.
+
+**Out of scope for the SCT MVP:**
+
+- Incoming damage/heals on player (post-MVP).
+- Pet damage (post-MVP).
+- Advanced physics/scatter (post-MVP `arc` mode).
+- LibSharedMedia integration.
+
 ## Post-MVP
 
 - Real chiptune samples (custom `Sound\` folder, mp3/ogg).
