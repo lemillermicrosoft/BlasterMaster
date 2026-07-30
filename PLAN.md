@@ -36,23 +36,23 @@ An 8-bit love letter to Blaster Master (NES, 1988), reimagined as a WoW combat H
 - Drop below 25% HP → siren fires once, not on every heartbeat tick.
 - `/reload` preserves position + mute state.
 
-## Crit audio (planned — separate PR)
+## Crit audio (in-flight, issue #4)
 
-**Why:** deehoc plays warlock and wants a punchy, distinct cue when Shadow Bolt (etc.) crits. Default WoW crit feedback is easy to miss in raid noise.
+**Why:** Default WoW crit feedback is easy to miss in raid noise. deehoc wants a punchy, distinct cue when a spell crit happens — class-agnostic, works for any player spell.
 
 **Scope:**
 
 - CLEU listener on `SPELL_DAMAGE` / `SPELL_PERIODIC_DAMAGE`, source = player, `critical == true`.
-- Distinct cue for Shadow Bolt (warlock flagship, all TBC ranks by spellId), generic cue for every other crit.
-- Throttle: at most one CRIT sound per 0.4s so AoE / multi-dot doesn't machinegun.
-- Toggleable via `/blaster crit`, persisted in SavedVariables (`critAudioEnabled`, default true). Respects global `muted`.
-- Post-MVP: pet crits (imp / felguard / etc.), per-spell config UI, custom chiptune samples.
+- Single generic crit cue for any player spell crit.
+- Throttle 0.4s. Gate on `muted` + `critAudioEnabled`.
+- `/blaster crit` toggles.
+- Post-MVP: per-spell config (e.g. distinct cue for signature spells if user wants), pet crits, custom audio.
 
 ## Custom Scrolling Combat Text (SCT) — planned
 
 **Why:** Default WoW SCT anchors to the mob nameplate and gets buried underneath it in busy fights. deehoc wants readable, customizable damage/heal numbers that stay out of the nameplate's way.
 
-**MVP scope (for a future PR):**
+**MVP scope:**
 
 - Replace (or supplement) Blizzard's floating combat text for outgoing damage/healing from the player.
 - Anchor mode options (persisted in SavedVariables):
@@ -95,6 +95,8 @@ An 8-bit love letter to Blaster Master (NES, 1988), reimagined as a WoW combat H
 - "GUN-1 / GUN-2 / GUN-3" weapon indicator = current weapon-swap set (MH/OH icons).
 - Vehicle UI takeover ("SOPHIA MODE") when in a WoW vehicle.
 - LibSharedMedia / LibDBIcon integration.
+- Pet crit audio (imp/felguard/etc.).
+- SCT incoming damage/heals + arc mode + spell coalescing toggle.
 
 ## Deliverables
 
