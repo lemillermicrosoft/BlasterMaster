@@ -19,7 +19,7 @@ local hud, armorBar, ammoBar, pilotLabel, bossBanner
 local bossCooldown = {} -- guid -> expiry time
 local lastSirenAt = 0
 local wasLowHp = false
-local lastCritAt = 0
+local lastActionAt = {}
 local playerGUID = nil
 
 -- ---------- helpers ----------
@@ -37,11 +37,12 @@ local POWER_COLORS = {
 local SFX = {
   -- Mapped to user-provided Blaster Master SFX pack (Media/Audio/).
   -- Size-based guesses; remap via a follow-up PR once we know which sound is which.
-  laser     = "Interface\\AddOns\\BlasterMaster\\Media\\Audio\\Blaster Master SFX (1).wav",
-  siren     = "Interface\\AddOns\\BlasterMaster\\Media\\Audio\\Blaster Master SFX (14).wav",
-  oneUp     = "Interface\\AddOns\\BlasterMaster\\Media\\Audio\\Blaster Master SFX (29).wav",
-  fanfare   = "Interface\\AddOns\\BlasterMaster\\Media\\Audio\\Blaster Master SFX (33).wav",
-  crit      = "Interface\\AddOns\\BlasterMaster\\Media\\Audio\\Blaster Master SFX (9).wav",
+  combatStart = "Interface\\AddOns\\BlasterMaster\\Media\\Audio\\Blaster Master SFX (1).wav",
+  lowHp       = "Interface\\AddOns\\BlasterMaster\\Media\\Audio\\Blaster Master SFX (14).wav",
+  kill        = "Interface\\AddOns\\BlasterMaster\\Media\\Audio\\Blaster Master SFX (29).wav",
+  levelUp     = "Interface\\AddOns\\BlasterMaster\\Media\\Audio\\Blaster Master SFX (33).wav",
+  crit        = "Interface\\AddOns\\BlasterMaster\\Media\\Audio\\Blaster Master SFX (9).wav",
+  boss        = "Interface\\AddOns\\BlasterMaster\\Media\\Audio\\Blaster Master SFX (1).wav",
 }
 
 local function playSFX(key)
@@ -49,9 +50,19 @@ local function playSFX(key)
   local path
   if _G.BlasterMaster_GetSfxPath then
     path = BlasterMaster_GetSfxPath(key)
+  else
+    path = SFX[key]
   end
-  if not path then path = SFX[key] end
-  if path then PlaySoundFile(path, "Master") end
+  if path then
+    PlaySoundFile(path, "Master")
+    return true
+  end
+end
+
+local function playAction(key, cooldown)
+  local now = GetTime()
+  if cooldown and now - (lastActionAt[key] or 0) < cooldown then return end
+  if playSFX(key) then lastActionAt[key] = now end
 end
 
 local function pixelBar(parent, w, h, r, g, b)
@@ -87,56 +98,65 @@ end
 
 -- ---------- HUD build ----------
 local function BuildHUD()
-  if hud then return end
-  hud = CreateFrame("Frame", "BlasterMasterHUD", UIParent)
-  hud:SetSize(240, 96)
-  hud:SetMovable(true)
-  hud:EnableMouse(true)
-  hud:RegisterForDrag("LeftButton")
-  hud:SetScript("OnDragStart", function(self) self:StartMoving() end)
-  hud:SetScript("OnDragStop", function(self)
+  if hud and armorBar and ammoBar and pilotLabel and bossBanner then return end
+
+  local builtHud = _G.BlasterMasterHUD or CreateFrame("Frame", "BlasterMasterHUD", UIParent)
+  builtHud:SetSize(240, 96)
+  builtHud:SetMovable(true)
+  builtHud:EnableMouse(true)
+  builtHud:RegisterForDrag("LeftButton")
+  builtHud:SetScript("OnDragStart", function(self) self:StartMoving() end)
+  builtHud:SetScript("OnDragStop", function(self)
     self:StopMovingOrSizing()
     local p, _, rp, x, y = self:GetPoint()
     BlasterMasterDB.point = { p, "UIParent", rp, x, y }
   end)
 
-  local bg = hud:CreateTexture(nil, "BACKGROUND")
-  bg:SetAllPoints(hud)
+  local bg = builtHud:CreateTexture(nil, "BACKGROUND")
+  bg:SetAllPoints(builtHud)
   bg:SetTexture(WHITE_TEX)
   bg:SetVertexColor(0.02, 0.02, 0.06, 0.85)
 
-  pilotLabel = hud:CreateFontString(nil, "OVERLAY", "NumberFont_Outline_Med")
-  pilotLabel:SetPoint("TOP", hud, "TOP", 0, -6)
-  pilotLabel:SetText("PILOT")
+  local builtPilotLabel = builtHud:CreateFontString(nil, "OVERLAY", "NumberFont_Outline_Med")
+  builtPilotLabel:SetPoint("TOP", builtHud, "TOP", 0, -6)
+  builtPilotLabel:SetText("PILOT")
 
   -- ARMOR label + bar
-  local armorLbl = hud:CreateFontString(nil, "OVERLAY", "NumberFont_Outline_Small")
-  armorLbl:SetPoint("TOPLEFT", hud, "TOPLEFT", 8, -30)
+  local armorLbl = builtHud:CreateFontString(nil, "OVERLAY", "NumberFont_Outline_Small")
+  armorLbl:SetPoint("TOPLEFT", builtHud, "TOPLEFT", 8, -30)
   armorLbl:SetText("ARMOR")
 
-  armorBar = pixelBar(hud, 180, 14, 0.2, 0.9, 0.2)
-  armorBar:SetPoint("LEFT", armorLbl, "RIGHT", 6, 0)
+  local builtArmorBar = pixelBar(builtHud, 180, 14, 0.2, 0.9, 0.2)
+  builtArmorBar:SetPoint("LEFT", armorLbl, "RIGHT", 6, 0)
 
   -- AMMO label + bar
-  local ammoLbl = hud:CreateFontString(nil, "OVERLAY", "NumberFont_Outline_Small")
-  ammoLbl:SetPoint("TOPLEFT", hud, "TOPLEFT", 8, -54)
+  local ammoLbl = builtHud:CreateFontString(nil, "OVERLAY", "NumberFont_Outline_Small")
+  ammoLbl:SetPoint("TOPLEFT", builtHud, "TOPLEFT", 8, -54)
   ammoLbl:SetText("AMMO ")
 
-  ammoBar = pixelBar(hud, 180, 14, 0.2, 0.4, 1.0)
-  ammoBar:SetPoint("LEFT", ammoLbl, "RIGHT", 6, 0)
+  local builtAmmoBar = pixelBar(builtHud, 180, 14, 0.2, 0.4, 1.0)
+  builtAmmoBar:SetPoint("LEFT", ammoLbl, "RIGHT", 6, 0)
 
   -- BOSS ROOM banner (child of UIParent so it can be wider)
-  bossBanner = CreateFrame("Frame", "BlasterMasterBossBanner", UIParent)
-  bossBanner:SetSize(UIParent:GetWidth(), 48)
-  bossBanner:SetPoint("TOP", UIParent, "TOP", 0, -80)
-  bossBanner:Hide()
-  local bbg = bossBanner:CreateTexture(nil, "BACKGROUND")
-  bbg:SetAllPoints(bossBanner)
+  local builtBossBanner = _G.BlasterMasterBossBanner or
+                          CreateFrame("Frame", "BlasterMasterBossBanner", UIParent)
+  builtBossBanner:SetSize(UIParent:GetWidth(), 48)
+  builtBossBanner:SetPoint("TOP", UIParent, "TOP", 0, -80)
+  builtBossBanner:Hide()
+  local bbg = builtBossBanner:CreateTexture(nil, "BACKGROUND")
+  bbg:SetAllPoints(builtBossBanner)
   bbg:SetTexture(WHITE_TEX)
   bbg:SetVertexColor(0.7, 0.05, 0.05, 0.9)
-  bossBanner.text = bossBanner:CreateFontString(nil, "OVERLAY", "NumberFont_Outline_Huge")
-  bossBanner.text:SetPoint("CENTER", bossBanner, "CENTER", 0, 0)
-  bossBanner.text:SetText("!! BOSS ROOM !!")
+  builtBossBanner.text = builtBossBanner.text or
+                         builtBossBanner:CreateFontString(nil, "OVERLAY", "NumberFont_Outline_Huge")
+  builtBossBanner.text:SetPoint("CENTER", builtBossBanner, "CENTER", 0, 0)
+  builtBossBanner.text:SetText("!! BOSS ROOM !!")
+
+  hud = builtHud
+  armorBar = builtArmorBar
+  ammoBar = builtAmmoBar
+  pilotLabel = builtPilotLabel
+  bossBanner = builtBossBanner
 end
 
 local function ApplyPoint()
@@ -153,7 +173,7 @@ end
 
 -- ---------- updates ----------
 local function UpdateArmor()
-  if not hud or not hud:IsShown() then return end
+  if not hud or not armorBar or not hud:IsShown() then return end
   local hp, hpMax = UnitHealth("player"), UnitHealthMax("player")
   if hpMax <= 0 then return end
   local pct = hp / hpMax
@@ -167,7 +187,7 @@ local function UpdateArmor()
   if pct <= threshold and not wasLowHp then
     local now = GetTime()
     if now - lastSirenAt >= 5 then
-      playSFX("siren")
+      playSFX("lowHp")
       lastSirenAt = now
     end
     wasLowHp = true
@@ -177,7 +197,7 @@ local function UpdateArmor()
 end
 
 local function UpdateAmmo()
-  if not hud or not hud:IsShown() then return end
+  if not hud or not ammoBar or not hud:IsShown() then return end
   local pType, pToken = UnitPowerType("player")
   local p, pMax = UnitPower("player"), UnitPowerMax("player")
   if pMax and pMax > 0 then
@@ -202,7 +222,7 @@ local function FlashBossBanner(name)
   bossBanner.text:SetText(string.format("!! BOSS ROOM !!  %s", name or ""))
   bossBanner:SetSize(UIParent:GetWidth(), 48)
   bossBanner:Show()
-  playSFX("laser")
+  playSFX("boss")
   C_Timer.After(2.0, function() if bossBanner then bossBanner:Hide() end end)
 end
 
@@ -236,6 +256,7 @@ BM:RegisterEvent("UNIT_MAXPOWER")
 BM:RegisterEvent("UNIT_DISPLAYPOWER")
 BM:RegisterEvent("PLAYER_LEVEL_UP")
 BM:RegisterEvent("PLAYER_REGEN_DISABLED")
+BM:RegisterEvent("PLAYER_REGEN_ENABLED")
 BM:RegisterEvent("PARTY_KILL")
 BM:RegisterEvent("PLAYER_TARGET_CHANGED")
 BM:RegisterEvent("COMBAT_LOG_EVENT_UNFILTERED")
@@ -255,6 +276,7 @@ BM:SetScript("OnEvent", function(self, event, arg1, arg2)
     return
   end
   if event == "PLAYER_ENTERING_WORLD" then
+    BuildHUD()
     UpdatePilot(); UpdateArmor(); UpdateAmmo()
     return
   end
@@ -268,15 +290,19 @@ BM:SetScript("OnEvent", function(self, event, arg1, arg2)
   end
   if event == "PLAYER_LEVEL_UP" then
     UpdatePilot()
-    playSFX("fanfare")
+    playSFX("levelUp")
     return
   end
   if event == "PLAYER_REGEN_DISABLED" then
-    playSFX("laser")
+    playSFX("combatStart")
+    return
+  end
+  if event == "PLAYER_REGEN_ENABLED" then
+    playSFX("combatEnd")
     return
   end
   if event == "PARTY_KILL" then
-    playSFX("oneUp")
+    playSFX("kill")
     return
   end
   if event == "PLAYER_TARGET_CHANGED" then
@@ -284,7 +310,6 @@ BM:SetScript("OnEvent", function(self, event, arg1, arg2)
     return
   end
   if event == "COMBAT_LOG_EVENT_UNFILTERED" then
-    if not (BlasterMasterDB and BlasterMasterDB.critAudioEnabled) then return end
     if not playerGUID then playerGUID = UnitGUID("player") end
     if not playerGUID then return end
 
@@ -295,19 +320,34 @@ BM:SetScript("OnEvent", function(self, event, arg1, arg2)
     local subevent  = info[2]
     local sourceGUID= info[4]
     if sourceGUID ~= playerGUID then return end
-    if subevent ~= "SPELL_DAMAGE" and subevent ~= "SPELL_PERIODIC_DAMAGE" then return end
 
-    -- SPELL prefix adds spellId, spellName, spellSchool at 12,13,14
-    -- DAMAGE suffix: amount, overkill, school, resisted, blocked, absorbed, critical, glancing, crushing
-    -- => critical flag is at index 21 for SPELL_DAMAGE / SPELL_PERIODIC_DAMAGE.
-    local critical = info[21]
-    if not critical then return end
+    if subevent == "SPELL_AURA_APPLIED" or subevent == "SPELL_AURA_REFRESH" then
+      if info[15] == "DEBUFF" then playAction("dotApplied", 0.2) end
+      return
+    end
 
-    local now = GetTime()
-    if now - lastCritAt < 0.4 then return end
-    lastCritAt = now
+    if subevent == "SPELL_PERIODIC_DAMAGE" then
+      playAction("dotHit", 0.15)
+      return
+    end
 
-    playSFX("crit")
+    local actionKey
+    local critical
+    if subevent == "SWING_DAMAGE" then
+      actionKey = "meleeHit"
+      critical = info[18]
+    elseif subevent == "SPELL_DAMAGE" or subevent == "RANGE_DAMAGE" then
+      actionKey = "spellHit"
+      critical = info[21]
+    else
+      return
+    end
+
+    if critical and (not BlasterMasterDB or BlasterMasterDB.critAudioEnabled ~= false) then
+      playAction("crit", 0.4)
+    else
+      playAction(actionKey, 0.1)
+    end
     return
   end
 end)

@@ -2,14 +2,15 @@
 
 An NES Blaster Master–inspired retro combat HUD for World of Warcraft (TBC Classic 2.5.6).
 
-Your HP is SOPHIA's ARMOR. Your resource is AMMO. Elites and bosses trigger a "BOSS ROOM" breach banner. Chiptune-style sound cues on combat, low HP, kills, and level-ups.
+Your HP is SOPHIA's ARMOR. Your resource is AMMO. Elites and bosses trigger a "BOSS ROOM" breach banner. Assign chiptune-style sound cues to combat actions and tune each action's volume independently.
 
 ## Features (MVP)
 
 - Draggable pixel-art HUD frame with ARMOR + AMMO bars
 - BOSS ROOM alert banner for elites / rares / bosses
-- 8-bit sound cues (built-in WoW sounds as chiptune stand-ins)
-- `/blaster` slash command: `toggle`, `mute`, `reset`
+- 37 selectable 8-bit sounds with None, Play, and per-action volume controls from 25% to 300%
+- Sound actions for combat start/end, melee and spell hits, DoT application/ticks, critical hits, low HP, kills, level-ups, and boss targets
+- Blizzard AddOns options panel plus `/blaster` slash commands
 
 ## Install
 
