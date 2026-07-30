@@ -8,6 +8,7 @@ local defaults = {
   muted = false,
   lowHpThreshold = 0.25,
   point = { "CENTER", "UIParent", "CENTER", 0, 200 },
+  critAudioEnabled = true,
 }
 
 local BM = CreateFrame("Frame", "BlasterMasterFrame", UIParent)
@@ -18,6 +19,8 @@ local hud, armorBar, ammoBar, pilotLabel, bossBanner
 local bossCooldown = {} -- guid -> expiry time
 local lastSirenAt = 0
 local wasLowHp = false
+local lastCritAt = 0
+local playerGUID = nil
 
 -- ---------- helpers ----------
 local WHITE_TEX = "Interface\\Buttons\\WHITE8x8"
@@ -38,6 +41,15 @@ local SFX = {
   siren     = "Interface\\AddOns\\BlasterMaster\\Media\\Audio\\Blaster Master SFX (14).wav",
   oneUp     = "Interface\\AddOns\\BlasterMaster\\Media\\Audio\\Blaster Master SFX (29).wav",
   fanfare   = "Interface\\AddOns\\BlasterMaster\\Media\\Audio\\Blaster Master SFX (33).wav",
+  crit      = "Interface\\AddOns\\BlasterMaster\\Media\\Audio\\Blaster Master SFX (9).wav",
+  critShadow= "Interface\\AddOns\\BlasterMaster\\Media\\Audio\\Blaster Master SFX (24).wav",
+}
+
+-- Shadow Bolt ranks across TBC (all ranks map to the "heavy" crit cue)
+local SHADOW_BOLT_IDS = {
+  [686]=true, [695]=true, [705]=true, [1088]=true, [1106]=true,
+  [7641]=true, [11659]=true, [11660]=true, [11661]=true,
+  [25307]=true, [27209]=true,
 }
 
 local function playSFX(key)
@@ -230,6 +242,7 @@ BM:RegisterEvent("PLAYER_LEVEL_UP")
 BM:RegisterEvent("PLAYER_REGEN_DISABLED")
 BM:RegisterEvent("PARTY_KILL")
 BM:RegisterEvent("PLAYER_TARGET_CHANGED")
+BM:RegisterEvent("COMBAT_LOG_EVENT_UNFILTERED")
 
 BM:SetScript("OnEvent", function(self, event, arg1, arg2)
   if event == "ADDON_LOADED" then
@@ -237,6 +250,7 @@ BM:SetScript("OnEvent", function(self, event, arg1, arg2)
     return
   end
   if event == "PLAYER_LOGIN" then
+    playerGUID = UnitGUID("player")
     BuildHUD()
     ApplyPoint()
     SetVisible(BlasterMasterDB.enabled)
@@ -273,6 +287,38 @@ BM:SetScript("OnEvent", function(self, event, arg1, arg2)
     CheckTarget()
     return
   end
+  if event == "COMBAT_LOG_EVENT_UNFILTERED" then
+    if not (BlasterMasterDB and BlasterMasterDB.critAudioEnabled) then return end
+    if not playerGUID then playerGUID = UnitGUID("player") end
+    if not playerGUID then return end
+
+    -- CombatLogGetCurrentEventInfo returns:
+    -- timestamp, subevent, hideCaster, sourceGUID, sourceName, sourceFlags, sourceRaidFlags,
+    -- destGUID, destName, destFlags, destRaidFlags, [prefix...], [suffix...]
+    local info = { CombatLogGetCurrentEventInfo() }
+    local subevent  = info[2]
+    local sourceGUID= info[4]
+    if sourceGUID ~= playerGUID then return end
+    if subevent ~= "SPELL_DAMAGE" and subevent ~= "SPELL_PERIODIC_DAMAGE" then return end
+
+    -- SPELL prefix adds spellId, spellName, spellSchool at 12,13,14
+    -- DAMAGE suffix: amount, overkill, school, resisted, blocked, absorbed, critical, glancing, crushing
+    -- => critical flag is at index 21 for SPELL_DAMAGE / SPELL_PERIODIC_DAMAGE.
+    local spellId  = info[12]
+    local critical = info[21]
+    if not critical then return end
+
+    local now = GetTime()
+    if now - lastCritAt < 0.4 then return end
+    lastCritAt = now
+
+    if spellId and SHADOW_BOLT_IDS[spellId] then
+      playSFX("critShadow")
+    else
+      playSFX("crit")
+    end
+    return
+  end
 end)
 
 -- ---------- slash ----------
@@ -293,6 +339,9 @@ SlashCmdList["BLASTERMASTER"] = function(msg)
     BlasterMasterDB.point = defaults.point
     ApplyPoint()
     print("|cff1e5ab4[BlasterMaster]|r HUD position reset.")
+  elseif cmd == "crit" then
+    BlasterMasterDB.critAudioEnabled = not BlasterMasterDB.critAudioEnabled
+    print("|cff1e5ab4[BlasterMaster]|r crit audio " .. (BlasterMasterDB.critAudioEnabled and "ON" or "OFF"))
   elseif cmd == "hp" then
     local n = tonumber(rest)
     if n and n > 0 and n < 1 then
@@ -302,6 +351,6 @@ SlashCmdList["BLASTERMASTER"] = function(msg)
       print("|cff1e5ab4[BlasterMaster]|r usage: /blaster hp <0..1>  (e.g. 0.3)")
     end
   else
-    print("|cff1e5ab4[BlasterMaster]|r commands: /blaster toggle | mute | reset | hp <0..1>")
+    print("|cff1e5ab4[BlasterMaster]|r commands: /blaster toggle | mute | crit | reset | hp <0..1>")
   end
 end
