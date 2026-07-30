@@ -1,7 +1,7 @@
-﻿# v0.5.0
+﻿# v0.6.2
 
-Changes since v0.4.0.
+Changes since v0.5.0.
 
-## Features
-- enhance options panel registration for better compatibility (7809b29)
+## Other
+- Add sound effects and volume control features to Blaster Master HUD (fc0041c)
 
