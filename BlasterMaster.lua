@@ -117,24 +117,46 @@ local function BuildHUD()
   bg:SetTexture(WHITE_TEX)
   bg:SetVertexColor(0.02, 0.02, 0.06, 0.85)
 
-  local builtPilotLabel = builtHud:CreateFontString(nil, "OVERLAY", "NumberFont_Outline_Med")
+  -- NOTE: TBC Classic 2.5.6 does not have the retail NumberFont_Outline_* font
+  -- templates. Use classic-compatible NumberFontNormal* templates instead.
+  local builtPilotLabel = builtHud:CreateFontString(nil, "OVERLAY", "NumberFontNormal")
+  if not builtPilotLabel then
+    print("|cffff5555[BlasterMaster]|r HUD build failed: pilot label unavailable.")
+    return
+  end
   builtPilotLabel:SetPoint("TOP", builtHud, "TOP", 0, -6)
   builtPilotLabel:SetText("PILOT")
 
   -- ARMOR label + bar
-  local armorLbl = builtHud:CreateFontString(nil, "OVERLAY", "NumberFont_Outline_Small")
+  local armorLbl = builtHud:CreateFontString(nil, "OVERLAY", "NumberFontNormalSmall")
+  if not armorLbl then
+    print("|cffff5555[BlasterMaster]|r HUD build failed: armor label unavailable.")
+    return
+  end
   armorLbl:SetPoint("TOPLEFT", builtHud, "TOPLEFT", 8, -30)
   armorLbl:SetText("ARMOR")
 
   local builtArmorBar = pixelBar(builtHud, 180, 14, 0.2, 0.9, 0.2)
+  if not builtArmorBar then
+    print("|cffff5555[BlasterMaster]|r HUD build failed: armor bar unavailable.")
+    return
+  end
   builtArmorBar:SetPoint("LEFT", armorLbl, "RIGHT", 6, 0)
 
   -- AMMO label + bar
-  local ammoLbl = builtHud:CreateFontString(nil, "OVERLAY", "NumberFont_Outline_Small")
+  local ammoLbl = builtHud:CreateFontString(nil, "OVERLAY", "NumberFontNormalSmall")
+  if not ammoLbl then
+    print("|cffff5555[BlasterMaster]|r HUD build failed: ammo label unavailable.")
+    return
+  end
   ammoLbl:SetPoint("TOPLEFT", builtHud, "TOPLEFT", 8, -54)
   ammoLbl:SetText("AMMO ")
 
   local builtAmmoBar = pixelBar(builtHud, 180, 14, 0.2, 0.4, 1.0)
+  if not builtAmmoBar then
+    print("|cffff5555[BlasterMaster]|r HUD build failed: ammo bar unavailable.")
+    return
+  end
   builtAmmoBar:SetPoint("LEFT", ammoLbl, "RIGHT", 6, 0)
 
   -- BOSS ROOM banner (child of UIParent so it can be wider)
@@ -148,7 +170,11 @@ local function BuildHUD()
   bbg:SetTexture(WHITE_TEX)
   bbg:SetVertexColor(0.7, 0.05, 0.05, 0.9)
   builtBossBanner.text = builtBossBanner.text or
-                         builtBossBanner:CreateFontString(nil, "OVERLAY", "NumberFont_Outline_Huge")
+                         builtBossBanner:CreateFontString(nil, "OVERLAY", "NumberFontNormalHuge")
+  if not builtBossBanner.text then
+    print("|cffff5555[BlasterMaster]|r HUD build failed: boss banner text unavailable.")
+    return
+  end
   builtBossBanner.text:SetPoint("CENTER", builtBossBanner, "CENTER", 0, 0)
   builtBossBanner.text:SetText("!! BOSS ROOM !!")
 
