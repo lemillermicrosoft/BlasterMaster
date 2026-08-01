@@ -2,12 +2,13 @@
 ## Title: BlasterMaster
 ## Notes: NES Blaster Master-inspired retro combat HUD with 8-bit sound cues.
 ## Author: GitHub Copilot c/o deehoc
-## Version: 0.6.2
+## Version: 0.6.3
 ## IconTexture: Interface\AddOns\BlasterMaster\Media\icon.png
 ## SavedVariables: BlasterMasterDB
 
 BlasterMaster.lua
 Options.lua
+
 
 
 

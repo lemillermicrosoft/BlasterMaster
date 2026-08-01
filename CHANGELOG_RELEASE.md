@@ -1,7 +1,7 @@
-﻿# v0.6.2
+﻿# v0.6.3
 
-Changes since v0.5.0.
+Changes since v0.6.2.
 
-## Other
-- Add sound effects and volume control features to Blaster Master HUD (fc0041c)
+## Fixes
+- use TBC Classic-compatible font templates in HUD build (#10) (5fdfc3d)
 
